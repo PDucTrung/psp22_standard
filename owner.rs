@@ -32,4 +32,14 @@ impl OwnableData {
         self.owner = new_owner;
         Ok(())
     }
+
+    pub fn _check_owner(
+        &self,
+        account: Option<AccountId>,
+    ) -> Result<(), OwnableError> {
+        if self.owner != account {
+            return Err(OwnableError::CallerIsNotOwner);
+        }
+        Ok(())
+    }
 }

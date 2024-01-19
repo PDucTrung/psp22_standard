@@ -28,6 +28,9 @@ pub mod psp22_standard {
     };
     use ink::prelude::{string::String, vec::Vec};
 
+    // MINTER RoleType = 4254773782
+    pub const MINTER: RoleType = ink::selector_id!("MINTER");
+
     #[ink(storage)]
     pub struct Psp22Standard {
         data: PSP22Data,
@@ -206,6 +209,7 @@ pub mod psp22_standard {
     impl PSP22Mintable for Psp22Standard {
         #[ink(message)]
         fn mint(&mut self, to: AccountId, value: u128) -> Result<(), PSP22Error> {
+            self.admin._check_role(MINTER, Some(to))?;
             if self.data.total_supply() + value > self.cap.cap() {
                 return Err(PSP22Error::CapExceeded);
             }
@@ -218,6 +222,7 @@ pub mod psp22_standard {
     impl PSP22Burnable for Psp22Standard {
         #[ink(message)]
         fn burn(&mut self, from: AccountId, value: u128) -> Result<(), PSP22Error> {
+            self.ownable._check_owner(Some(self.env().caller()))?;
             let events = self.data._burn_from(from, value)?;
             self.emit_events(events);
             Ok(())
@@ -231,39 +236,23 @@ pub mod psp22_standard {
         }
         #[ink(message)]
         fn renounce_ownership(&mut self) -> Result<(), OwnableError> {
-            let caller = self.env().caller();
-            if let Some(owner) = self.ownable.owner() {
-                if caller == owner {
-                    self.ownable.renounce_ownership()?;
-                    self.env().emit_event(OwnershipTransferred {
-                        old_owner: Some(caller),
-                        new_owner: None,
-                    });
-                } else {
-                    return Err(OwnableError::CallerIsNotOwner);
-                }
-            } else {
-                return Err(OwnableError::NewOwnerIsNotSet);
-            }
+            self.ownable._check_owner(Some(self.env().caller()))?;
+            self.ownable.renounce_ownership()?;
+            self.env().emit_event(OwnershipTransferred {
+                old_owner: Some(self.env().caller()),
+                new_owner: None,
+            });
 
             Ok(())
         }
         #[ink(message)]
         fn transfer_ownership(&mut self, new_owner: Option<AccountId>) -> Result<(), OwnableError> {
-            let caller = self.env().caller();
-            if let Some(owner) = self.ownable.owner() {
-                if caller == owner {
-                    self.ownable.transfer_ownership(new_owner)?;
-                    self.env().emit_event(OwnershipTransferred {
-                        old_owner: Some(owner),
-                        new_owner,
-                    });
-                } else {
-                    return Err(OwnableError::CallerIsNotOwner);
-                }
-            } else {
-                return Err(OwnableError::NewOwnerIsNotSet);
-            }
+            self.ownable._check_owner(Some(self.env().caller()))?;
+            self.ownable.transfer_ownership(new_owner)?;
+            self.env().emit_event(OwnershipTransferred {
+                old_owner: self.owner(),
+                new_owner,
+            });
 
             Ok(())
         }

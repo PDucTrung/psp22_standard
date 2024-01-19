@@ -10,7 +10,9 @@ pub enum PSP22Error {
     ZeroSenderAddress,
     InvalidCap,
     CapExceeded,
+    OwnableError(OwnableError),
     SafeTransferCheckFailed(String),
+    AccessControlError(AccessControlError),
 }
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -42,4 +44,16 @@ pub enum AccessControlError {
     InvalidCaller,
     MissingRole,
     RoleRedundant,
+}
+
+impl From<AccessControlError> for PSP22Error {
+    fn from(error: AccessControlError) -> Self {
+        PSP22Error::AccessControlError(error)
+    }
+}
+
+impl From<OwnableError> for PSP22Error {
+    fn from(error: OwnableError) -> Self {
+        PSP22Error::OwnableError(error)
+    }
 }
