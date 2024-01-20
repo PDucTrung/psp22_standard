@@ -12,16 +12,6 @@ pub struct AccessControlData {
 }
 
 impl AccessControlData {
-    pub fn new(admin: &Option<AccountId>) -> AccessControlData {
-        let mut data = AccessControlData {
-            admin_roles: Default::default(),
-            members: Default::default(),
-        };
-        data.members
-            .insert((AccessControlData::_default_admin(), admin), &());
-        data
-    }
-
     pub fn _has_role(&self, role: RoleType, address: &Option<AccountId>) -> bool {
         self.members.contains((role, address))
     }

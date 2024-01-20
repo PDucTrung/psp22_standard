@@ -11,20 +11,21 @@ mod traits;
 pub use access_control::AccessControlData;
 pub use capped::Capped;
 pub use data::{PSP22Data, PSP22Event};
-pub use errors::{AccessControlError, OwnableError, PSP22Error, UpgradeableError};
+pub use errors::{AccessControlError, Error, OwnableError, PSP22Error, UpgradeableError};
 pub use metadata::Metadata;
 pub use owner::OwnableData;
 pub use traits::{
-    AccessControl, Ownable, PSP22Burnable, PSP22Capped, PSP22Metadata, PSP22Mintable, RoleType,
-    UpgradeableTrait, PSP22,
+    AccessControl, AdminTrait, Ownable, PSP22Burnable, PSP22Capped, PSP22Metadata, PSP22Mintable,
+    RoleType, UpgradeableTrait, PSP22,
 };
 
 #[ink::contract]
 pub mod psp22_standard {
     use crate::{
-        AccessControl, AccessControlData, AccessControlError, Capped, Metadata, Ownable,
-        OwnableData, OwnableError, PSP22Burnable, PSP22Capped, PSP22Data, PSP22Error, PSP22Event,
-        PSP22Metadata, PSP22Mintable, RoleType, UpgradeableError, UpgradeableTrait, PSP22,
+        AccessControl, AccessControlData, AccessControlError, AdminTrait, Capped, Metadata,
+        Ownable, OwnableData, OwnableError, PSP22Burnable, PSP22Capped, PSP22Data, PSP22Error,
+        PSP22Event, PSP22Metadata, PSP22Mintable, RoleType, UpgradeableError, UpgradeableTrait,
+        PSP22, Error
     };
     use ink::prelude::{string::String, vec::Vec};
 
@@ -61,9 +62,11 @@ pub mod psp22_standard {
             decimals: u8,
         ) -> Self {
             let mut instance = Self::default();
+            instance.ownable._init_with_owner(Self::env().caller());
             assert!(instance.cap._init_cap(cap).is_ok());
-            Metadata::new(name, symbol, decimals);
-            OwnableData::_init_with_owner(Self::env().caller());
+            instance.metadata.name = name;
+            instance.metadata.symbol = symbol;
+            instance.metadata.decimals = decimals;
             instance.admin._init_with_admin(Some(Self::env().caller()));
             instance
         }
@@ -209,7 +212,7 @@ pub mod psp22_standard {
     impl PSP22Mintable for Psp22Standard {
         #[ink(message)]
         fn mint(&mut self, to: AccountId, value: u128) -> Result<(), PSP22Error> {
-            self.admin._check_role(MINTER, Some(to))?;
+            self.admin._check_role(MINTER, Some(Self::env().caller()))?;
             if self.data.total_supply() + value > self.cap.cap() {
                 return Err(PSP22Error::CapExceeded);
             }
@@ -268,6 +271,7 @@ pub mod psp22_standard {
     impl UpgradeableTrait for Psp22Standard {
         #[ink(message)]
         fn set_code(&mut self, new_code_hash: Hash) -> Result<(), UpgradeableError> {
+            self.ownable._check_owner(Some(self.env().caller()))?;
             self.env()
                 .set_code_hash(&new_code_hash)
                 .map_err(|_| UpgradeableError::SetCodeHashFailed)
@@ -292,7 +296,8 @@ pub mod psp22_standard {
             role: RoleType,
             account: Option<AccountId>,
         ) -> Result<(), AccessControlError> {
-            self.admin._check_role(role, account)?;
+            self.admin
+                ._check_role(self.get_role_admin(role), Some(Self::env().caller()))?;
             if self.admin._has_role(role, &account) {
                 return Err(AccessControlError::RoleRedundant);
             }
@@ -305,6 +310,8 @@ pub mod psp22_standard {
             role: RoleType,
             account: Option<AccountId>,
         ) -> Result<(), AccessControlError> {
+            self.admin
+                ._check_role(self.get_role_admin(role), Some(Self::env().caller()))?;
             self.admin._check_role(role, account)?;
             self.admin._do_revoke_role(role, account);
             Ok(())
@@ -321,6 +328,24 @@ pub mod psp22_standard {
             self.admin._check_role(role, account)?;
             self.admin._do_revoke_role(role, account);
             Ok(())
+        }
+    }
+
+    impl AdminTrait for Psp22Standard {
+        #[ink(message)]
+        fn withdraw_fee(&mut self, value: Balance, receiver: AccountId) -> Result<(), Error> {
+            self.ownable._check_owner(Some(self.env().caller()))?;
+            if value > Self::env().balance() {
+                return Err(Error::NotEnoughBalance);
+            }
+            if Self::env().transfer(receiver, value).is_err() {
+                return Err(Error::WithdrawFeeError);
+            }
+            Ok(())
+        }
+        #[ink(message)]
+        fn get_balance(&self) -> Balance {
+            Self::env().balance()
         }
     }
 }

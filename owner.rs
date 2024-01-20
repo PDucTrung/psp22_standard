@@ -8,12 +8,8 @@ pub struct OwnableData {
 }
 
 impl OwnableData {
-    pub fn _init_with_owner(account: AccountId) -> OwnableData {
-        let mut data = OwnableData {
-            owner: Some(account),
-        };
-        data.owner = Some(account);
-        data
+    pub fn _init_with_owner(&mut self, account: AccountId) {
+        self.owner = Some(account);
     }
 
     pub fn owner(&self) -> Option<AccountId> {
@@ -33,10 +29,7 @@ impl OwnableData {
         Ok(())
     }
 
-    pub fn _check_owner(
-        &self,
-        account: Option<AccountId>,
-    ) -> Result<(), OwnableError> {
+    pub fn _check_owner(&self, account: Option<AccountId>) -> Result<(), OwnableError> {
         if self.owner != account {
             return Err(OwnableError::CallerIsNotOwner);
         }

@@ -3,11 +3,12 @@ use ink::{
     primitives::AccountId,
 };
 
-use crate::errors::{AccessControlError, OwnableError, PSP22Error, UpgradeableError};
+use crate::errors::{AccessControlError, OwnableError, PSP22Error, UpgradeableError, Error};
 
 // Type
 use ink::env::{DefaultEnvironment, Environment};
 pub type Hash = <DefaultEnvironment as Environment>::Hash;
+pub type Balance = <DefaultEnvironment as Environment>::Balance;
 pub type RoleType = u32;
 
 // pub type EnvAccess = ::ink::EnvAccess<'static, DefaultEnvironment>;
@@ -123,4 +124,12 @@ pub trait AccessControl {
         role: RoleType,
         account: Option<AccountId>,
     ) -> Result<(), AccessControlError>;
+}
+
+#[ink::trait_definition]
+pub trait AdminTrait {
+    #[ink(message)]
+    fn withdraw_fee(&mut self, value: Balance, receiver: AccountId) -> Result<(), Error>;
+    #[ink(message)]
+    fn get_balance(&self) -> Balance;
 }

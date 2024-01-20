@@ -28,16 +28,6 @@ pub struct PSP22Data {
 }
 
 impl PSP22Data {
-    pub fn new(supply: u128, creator: AccountId) -> PSP22Data {
-        let mut data = PSP22Data {
-            total_supply: supply,
-            balances: Default::default(),
-            allowances: Default::default(),
-        };
-        data.balances.insert(creator, &supply);
-        data
-    }
-
     pub fn total_supply(&self) -> u128 {
         self.total_supply
     }
